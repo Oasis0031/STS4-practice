@@ -13,3 +13,4 @@ public interface BoardService {
 	Optional<Board> findById(Long id);	// ID로 게시글 1개 조회(R)
 	void deleteById(Long id);		//삭제 메서드 정의
 }
+//
