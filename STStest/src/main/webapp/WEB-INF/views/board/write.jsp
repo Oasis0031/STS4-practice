@@ -152,42 +152,31 @@ textarea {
 		
 <script>
 function getLocation() {
-  console.log("--- getLocation() 함수 시작 ---");
+	  if (navigator.geolocation) {
+	    // 브라우저가 Geolocation을 지원하는 경우
+	    navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+	  } else {
+	    // 브라우저가 Geolocation을 지원하지 않는 경우
+	    alert("이 브라우저에서는 위치 정보를 사용할 수 없습니다.");
+	  }
+	}
 
-  if (navigator.geolocation) {
-    console.log("1. 브라우저가 Geolocation을 지원합니다.");
+	function successCallback(position) {
+	  // 좌표 변수 직접 추출
+	  var latitude = position.coords.latitude;
+	  var longitude = position.coords.longitude;
 
-    navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
-  } else {
-    console.log("1-B. 이 브라우저는 Geolocation을 지원하지 않습니다.");
-    alert("이 브라우저에서는 위치 정보를 사용할 수 없습니다.");
-  }
-}
+	  // 숨겨진 input에 저장
+	  var locationInput = document.getElementById("location");
+	  if (locationInput) {
+	    locationInput.value = latitude + "," + longitude;
+	  }
+	}
 
-function successCallback(position) {
-  console.log("2-A. 원본 coords 객체:", position.coords);
-
-  // 좌표 변수 직접 추출 (디스트럭처링 X)
-  var latitude = position.coords.latitude;
-  var longitude = position.coords.longitude;
-
-  console.log("2. 위치 정보 획득 성공.");
-  console.log("   - 획득한 좌표: latitude=" + latitude + ", longitude=" + longitude);
-
-  // 숨겨진 input에 저장
-  var locationInput = document.getElementById("location");
-  if (locationInput) {
-    locationInput.value = latitude + "," + longitude;
-    console.log("3. locationInput.value: " + locationInput.value);
-  } else {
-    console.log("3-B. location input 요소를 찾지 못했습니다.");
-  }
-}
-
-function errorCallback(error) {
-  console.log("위치 정보 획득 실패:", error);
-  alert("위치 정보를 가져올 수 없습니다. 오류 코드: " + error.code);
-}
+	function errorCallback(error) {
+	  // 위치 정보 획득 실패 시 사용자에게 알림
+	  alert("위치 정보를 가져올 수 없습니다. 오류 코드: " + error.code);
+	}
 </script>
 	</div>
 </body>
