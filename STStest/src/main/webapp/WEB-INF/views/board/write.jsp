@@ -158,7 +158,7 @@ textarea {
 
 		<script>
 		const WEATHER_API_URL = "https://api.openweathermap.org/data/2.5/weather";
-		const WEATHER_API_KEY = "d4a79527b0f1a2e2b58a924c4cb5b504";
+		const WEATHER_API_KEY = "오픈웨더맵 키 확인";
 
 		function getLocation() {
 			if (navigator.geolocation) {

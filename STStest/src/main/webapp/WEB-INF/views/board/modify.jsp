@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	pageEncoding="UTF-8"%>
-
+<%@ taglib prefix="c" uri="jakarta.tags.core"%>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions"%>
 <!DOCTYPE html>
 
 <html>
@@ -104,57 +105,135 @@ textarea {
 
 		<!-- BoardController의 POST /modify로 데이터를 보냅니다. -->
 		<form action="/board/modify" method="post">
-
-			<!-- 게시글 ID (수정을 위해 필수적으로 hidden 필드로 전달해야 합니다.) -->
-			<input type="hidden" name="id" value="${board.id}">
-
-			<!-- 제목 -->
 			<div class="form-group">
 				<label for="title">제목</label> <input type="text" id="title"
 					name="title" value="${board.title}" placeholder="제목을 입력하세요">
-				<p class="error-message">${errors.title}</p>
+				<c:if test="${not empty errors.title}">
+					<p class="error-message">${errors.title}</p>
+				</c:if>
 			</div>
 
-			<!-- 작성자 (수정 불가능하다고 가정하고 disabled 처리, 필요 시 수정 가능하게 변경) -->
 			<div class="form-group">
 				<label for="author">작성자</label> <input type="text" id="author"
-					name="author" value="${board.author}" disabled
-					style="background-color: #eee;">
-				<!-- 작성자는 수정하지 않더라도 Board 객체에 포함되어야 하므로 hidden으로 한 번 더 보냅니다. -->
-				<input type="hidden" name="author" value="${board.author}">
+					name="author" value="${board.author}" placeholder="작성자를 입력하세요">
+				<c:if test="${not empty errors.author}">
+					<p class="error-message">${errors.author}</p>
+				</c:if>
 			</div>
 
-			<!-- 위치/날씨 -->
 			<div style="display: flex; gap: 20px;">
 				<div class="form-group" style="flex: 1;">
-					<label for="location">위치</label> <input type="text" id="location"
-						name="location" value="${board.location}" placeholder="예: 서울, 제주">
-					<p class="error-message">${errors.location}</p>
+					<label>위치 (위도, 경도)</label>
+					<button type="button" onclick="getLocation()">위치 찾기</button>
+					<input type="hidden" id="location" name="location"
+						value="${board.location}">
+					<p id="location-status">위치 정보를 받아오세요.</p>
+					<c:if test="${not empty errors.location}">
+						<p class="error-message">${errors.location}</p>
+					</c:if>
 				</div>
+
 				<div class="form-group" style="flex: 1;">
 					<label for="weather">날씨</label> <input type="text" id="weather"
-						name="weather" value="${board.weather}" placeholder="예: 맑음, 비">
-					<p class="error-message">${errors.weather}</p>
+						name="weather" value="${board.weather}"
+						placeholder="날씨 정보를 기다리는 중..." readonly>
+
+					<p id="weather-status"
+						style="font-size: 0.9em; color: #007bff; margin-top: 5px;">날씨
+						정보가 표시됩니다.</p>
+					<c:if test="${not empty errors.weather}">
+						<p class="error-message">${errors.weather}</p>
+					</c:if>
 				</div>
 			</div>
 
-			<!-- 내용 -->
 			<div class="form-group">
 				<label for="content">내용</label>
-				<!-- 내용이 null일 경우를 대비해 EL 내부에서 처리하는 것이 안전하지만, 여기서는 단순화합니다. -->
 				<textarea id="content" name="content" placeholder="내용을 입력해주세요">${board.content}</textarea>
-				<p class="error-message">${errors.content}</p>
+				<c:if test="${not empty errors.content}">
+					<p class="error-message">${errors.content}</p>
+				</c:if>
 			</div>
 
 			<div class="btn-group">
 				<a href="/board/view/${board.id}" class="btn-back">취소 및 돌아가기</a>
 				<button type="submit" class="btn-submit">수정 완료</button>
-				<button type="button" onclick="deletePost(${board.id})" class="btn-default btn-delete">삭제하기</button>
-				
+				<button type="button" onclick="deletePost(${board.id})"
+					class="btn-default btn-delete">삭제하기</button>
+
 			</div>
 		</form>
 	</div>
+	<script>
+		const WEATHER_API_URL = "https://api.openweathermap.org/data/2.5/weather";
+		const WEATHER_API_KEY = "오픈웨더맵 키 확인";
 
+		function getLocation() {
+			if (navigator.geolocation) {
+				navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+			} else {
+				alert("이 브라우저에서는 위치 정보를 사용할 수 없습니다.");
+			}
+		}
+
+		function successCallback(position) {
+			const latitude = position.coords.latitude;
+			const longitude = position.coords.longitude;
+			const locationInput = document.getElementById("location");
+			if (locationInput) {
+				locationInput.value = latitude + "," + longitude;
+			}
+			document.getElementById("location-status").innerText = "위치 정보를 받았습니다.";
+			getWeather(latitude, longitude);
+		}
+
+		function getWeather(lat, lon) {
+			document.getElementById("weather-status").innerText = "날씨 정보 요청 중";
+			document.getElementById("weather").value = "";
+			const url = WEATHER_API_URL + "?lat=" + lat + "&lon=" + lon + "&appid=" + WEATHER_API_KEY + "&units=metric&lang=kr";
+
+			fetch(url)
+				.then(response => {
+					if (!response.ok) {
+						throw new Error("HTTP 오류: " + response.status);
+					}
+					return response.json();
+				})
+				.then(data => {
+					const weatherDescription = data.weather && data.weather.length > 0 ? data.weather[0].description : "알 수 없는 날씨";
+					const temperature = data.main ? data.main.temp.toFixed(1) : "N/A";
+					const fullWeather = weatherDescription + " (" + temperature + "°C)";
+					document.getElementById("weather").value = fullWeather;
+					
+					const fullLocationInfo = data.name || lat.toFixed(4) + ", " + lon.toFixed(4);
+		
+					document.getElementById("location-status").innerText = "위치 획득 성공. (" + (data.name ? data.name : fullLocationInfo) + ")";
+					document.getElementById("weather-status").innerText = "날씨 획득 성공. (" + fullLocationInfo + ")";
+				})
+				.catch(error => {
+					console.error("날씨 정보 획득 실패:", error);
+					document.getElementById("weather-status").innerText = "날씨 획득 실패. (API Key 확인 필요)";
+					document.getElementById("weather").value = "날씨 정보를 가져올 수 없습니다.";
+				});
+		}
+
+		function errorCallback(error) {
+			let errorMessage = "위치 정보를 가져올 수 없음.";
+			switch (error.code) {
+				case error.PERMISSION_DENIED:
+					errorMessage += " 사용자가 위치 정보 공유를 거부함.";
+					break;
+				case error.POSITION_UNAVAILABLE:
+					errorMessage += " 위치 정보 사용이 불가함.";
+					break;
+				default:
+					errorMessage += " 오류 코드: " + error.code;
+			}
+			document.getElementById("location-status").innerText = "위치 획득 실패";
+			document.getElementById("weather-status").innerText = "위치 획득 실패로 날씨를 가져올 수 없습니다.";
+			alert(errorMessage);
+		}
+		</script>
 
 </body>
 </html>
