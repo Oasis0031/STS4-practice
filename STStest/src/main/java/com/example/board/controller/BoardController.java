@@ -1,5 +1,6 @@
 package com.example.board.controller;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Controller;
@@ -8,10 +9,14 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.example.board.model.Board;
+import com.example.board.model.Reply;
 import com.example.board.service.BoardService;
+import com.example.board.service.ReplyService;
 
 import jakarta.validation.Valid;
 
@@ -20,10 +25,12 @@ import jakarta.validation.Valid;
 public class BoardController {
 
 	private final BoardService boardService;
-
+	private final ReplyService replyService;
+	
 	// 생성자 주입
-	public BoardController(BoardService boardService) {
+	public BoardController(BoardService boardService, ReplyService replyService) {
 		this.boardService = boardService;
+		this.replyService = replyService;
 	}
 
 	// Create 게시글 작성 (폼)
@@ -56,8 +63,13 @@ public class BoardController {
 		Optional<Board> boardOptional = boardService.findById(id);
         
         if (boardOptional.isPresent()) {
-            // Optional을 해제하여 실제 Board 객체를 모델에 담습니다.
-            model.addAttribute("board", boardOptional.get());
+        	Board board = boardOptional.get();
+        	
+        	List<Reply> replyList = replyService.getRepliesByBoardId(id);
+        	
+            model.addAttribute("board", board);
+            model.addAttribute("replyList", replyList);
+            
             return "board/view";
         } else {
             // 게시글이 없는 경우
@@ -105,4 +117,32 @@ public class BoardController {
 		boardService.deleteById(id);
 		return "redirect:/board/list"; // ⬅️ /board/list로 수정
 	}
+	
+	//댓글처리
+	@PostMapping("/{boardId}/reply")
+	@ResponseBody
+	public String addReply(@PathVariable Long boardId, @RequestBody Reply reply) {
+		try {
+			replyService.saveReply(boardId, reply);
+			return "success";
+		} catch (Exception e) {
+			System.err.println("댓글 저장 오류: " + e.getMessage());
+			return "fail";
+		}
+	}
+	@PostMapping("/{boardId}/reply/{parentReplyId")
+	@ResponseBody
+	public String subAddReply(@PathVariable Long boardId,
+							  @PathVariable Long parentReplyId,
+							  @RequestBody Reply subReply) {
+		try {
+			replyService.saveSubReply(boardId, parentReplyId, subReply);
+			return "success";
+		} catch (Exception e) {
+			System.err.println("대댓글 저장 오류 (게시글 ID: " + boardId + ", 부모 ID: " + parentReplyId + "): " + e.getMessage());
+			return "fail";
+		}
+	
+	
 }
+	}
